@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas - Nivel Medio</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        #juego {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #pregunta {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .opcion {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.3s;
+        }
+        .opcion:hover {
+            background-color: #2980b9;
+        }
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .correcto {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .incorrecto {
+            background-color: #e74c3c;
+            color: white;
+        }
+        #puntaje {
+            text-align: right;
+            font-weight: bold;
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div id="juego">
+        <h1>💰 Juego de Finanzas - Nivel Medio</h1>
+        <div id="puntaje">Puntaje: 0/0</div>
+        <div id="pregunta">Cargando pregunta...</div>
+        <div id="opciones"></div>
+        <div id="resultado"></div>
+    </div>
+
+    <!-- JavaScript con FETCH (¡Apunta al puerto 8001!) -->
+    <script>
+        let preguntaActual = 0;
+        let puntaje = 0;
+
+        // Cargar pregunta desde el backend (MEDIO.PY)
+        async function cargarPregunta() {
+            try {
+                const response = await fetch(`http://localhost:8001/pregunta_media/${preguntaActual}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById("pregunta").textContent = "¡Juego completado!";
+                    document.getElementById("opciones").innerHTML = `Puntaje final: ${puntaje}/${preguntaActual}`;
+                    return;
+                }
+                
+                document.getElementById("pregunta").textContent = data.pregunta;
+                let opcionesHTML = "";
+                
+                data.opciones.forEach((opcion, index) => {
+                    opcionesHTML += `<button class="opcion" onclick="verificarRespuesta(${index})">${String.fromCharCode(65 + index)}. ${opcion}</button>`;
+                });
+                
+                document.getElementById("opciones").innerHTML = opcionesHTML;
+                document.getElementById("resultado").innerHTML = "";
+                
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById("resultado").innerHTML = 
+                    '<div class="incorrecto">Error al cargar. ¿El servidor está corriendo en el puerto 8001?</div>';
+            }
+        }
+
+        // Verificar respuesta (MEDIO.PY)
+        async function verificarRespuesta(respuestaSeleccionada) {
+            try {
+                const response = await fetch(
+                    `http://localhost:8001/verificar_media/${preguntaActual}/${respuestaSeleccionada}`
+                );
+                const resultado = await response.json();
+                
+                const resultadoDiv = document.getElementById("resultado");
+                
+                if (resultado.correcta) {
+                    resultadoDiv.innerHTML = `<div class="correcto">${resultado.explicacion}</div>`;
+                    puntaje++;
+                } else {
+                    resultadoDiv.innerHTML = `<div class="incorrecto">${resultado.explicacion}</div>`;
+                }
+                
+                document.getElementById("puntaje").textContent = `Puntaje: ${puntaje}/${preguntaActual + 1}`;
+                
+                preguntaActual++;
+                setTimeout(cargarPregunta, 1500);
+                
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById("resultado").innerHTML = 
+                    '<div class="incorrecto">Error al verificar respuesta</div>';
+            }
+        }
+
+        // Iniciar el juego
+        window.onload = cargarPregunta;
+    </script>
+</body>
+</html>

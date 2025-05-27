@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Juego de Finanzas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        #juego {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #pregunta {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #resultado {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .correcto {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .incorrecto {
+            background-color: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="juego">
+        <h1>💵 Juego de Finanzas</h1>
+        <div id="pregunta">Cargando pregunta...</div>
+        <div id="opciones"></div>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Variables del juego
+        let preguntaActual = 0;
+        let puntaje = 0;
+
+        // Elementos del DOM
+        const preguntaElement = document.getElementById("pregunta");
+        const opcionesElement = document.getElementById("opciones");
+        const resultadoElement = document.getElementById("resultado");
+
+        // Función para cargar preguntas desde el backend
+        async function cargarPregunta() {
+            try {
+                const response = await fetch(`http://localhost:8000/obtener_pregunta/${preguntaActual}`);
+                
+                if (!response.ok) {
+                    throw new Error("Error al cargar pregunta");
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    preguntaElement.textContent = "¡Juego completado!";
+                    opcionesElement.innerHTML = `<p>Tu puntaje final: ${puntaje}/${preguntaActual}</p>`;
+                    return;
+                }
+                
+                mostrarPregunta(data);
+                
+            } catch (error) {
+                console.error("Error:", error);
+                resultadoElement.textContent = "Error al cargar la pregunta. Recarga la página.";
+                resultadoElement.className = "incorrecto";
+            }
+        }
+
+        // Función para mostrar pregunta y opciones
+        function mostrarPregunta(pregunta) {
+            preguntaElement.textContent = pregunta.pregunta;
+            opcionesElement.innerHTML = "";
+            
+            pregunta.opciones.forEach((opcion, index) => {
+                const boton = document.createElement("button");
+                boton.textContent = opcion;
+                boton.onclick = () => verificarRespuesta(index);
+                opcionesElement.appendChild(boton);
+            });
+        }
+
+        // Función para verificar respuestas
+        async function verificarRespuesta(respuestaSeleccionada) {
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/verificar_respuesta/${preguntaActual}/${respuestaSeleccionada}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error("Error al verificar respuesta");
+                }
+                
+                const resultado = await response.json();
+                
+                if (resultado.correcta) {
+                    resultadoElement.textContent = "✅ " + resultado.explicacion;
+                    resultadoElement.className = "correcto";
+                    puntaje++;
+                } else {
+                    resultadoElement.textContent = "❌ " + resultado.explicacion;
+                    resultadoElement.className = "incorrecto";
+                }
+                
+                preguntaActual++;
+                setTimeout(cargarPregunta, 1500);
+                
+            } catch (error) {
+                console.error("Error:", error);
+                resultadoElement.textContent = "Error al verificar respuesta. Intenta de nuevo.";
+                resultadoElement.className = "incorrecto";
+            }
+        }
+
+        // Iniciar el juego cuando se carga la página
+        window.onload = cargarPregunta;
+    </script>
+</body>
+</html>

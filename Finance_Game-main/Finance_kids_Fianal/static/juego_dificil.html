@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas - Nivel Difícil</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        #juego {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #343a40;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+        #pregunta {
+            font-size: 1.4em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .opcion {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #495057;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        .opcion:hover {
+            background-color: #343a40;
+            transform: translateX(5px);
+        }
+        #resultado {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 5px;
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+        .correcto {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 5px solid #28a745;
+        }
+        .incorrecto {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+        #puntaje {
+            text-align: right;
+            font-size: 1.3em;
+            color: #6c757d;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .explicacion {
+            margin-top: 15px;
+            font-size: 1em;
+            font-style: italic;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="juego">
+        <h1>📊 Finanzas Avanzadas - Nivel Difícil</h1>
+        <div id="puntaje">Puntaje: 0/0</div>
+        <div id="pregunta">Cargando pregunta...</div>
+        <div id="opciones"></div>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Variables del juego
+        let preguntaActual = 0;
+        let puntaje = 0;
+        const totalPreguntas = 3;
+
+        // Elementos del DOM
+        const preguntaElement = document.getElementById("pregunta");
+        const opcionesElement = document.getElementById("opciones");
+        const resultadoElement = document.getElementById("resultado");
+        const puntajeElement = document.getElementById("puntaje");
+
+        // Cargar pregunta desde el backend (DIFICIL.PY - Puerto 8002)
+        async function cargarPregunta() {
+            try {
+                const response = await fetch(`http://localhost:8002/pregunta_dificil/${preguntaActual}`);
+                
+                if (!response.ok) throw new Error("Error en la red");
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    finJuego();
+                    return;
+                }
+                
+                mostrarPregunta(data);
+                
+            } catch (error) {
+                console.error("Error:", error);
+                resultadoElement.innerHTML = `
+                    <div class="incorrecto">
+                        Error al cargar la pregunta. Verifica:
+                        <ol>
+                            <li>El servidor está corriendo en puerto 8002</li>
+                            <li>La URL es correcta</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+        // Mostrar pregunta y opciones
+        function mostrarPregunta(pregunta) {
+            preguntaElement.textContent = pregunta.pregunta;
+            opcionesElement.innerHTML = "";
+            
+            pregunta.opciones.forEach((opcion, index) => {
+                const boton = document.createElement("button");
+                boton.className = "opcion";
+                boton.innerHTML = `
+                    <strong>${String.fromCharCode(65 + index)}.</strong> ${opcion}
+                `;
+                boton.onclick = () => verificarRespuesta(index);
+                opcionesElement.appendChild(boton);
+            });
+            
+            resultadoElement.innerHTML = "";
+        }
+
+        // Verificar respuesta seleccionada
+        async function verificarRespuesta(respuestaSeleccionada) {
+            try {
+                const response = await fetch(
+                    `http://localhost:8002/verificar_dificil/${preguntaActual}/${respuestaSeleccionada}`
+                );
+                
+                if (!response.ok) throw new Error("Error en la red");
+                
+                const resultado = await response.json();
+                
+                mostrarResultado(resultado);
+                
+                preguntaActual++;
+                if (preguntaActual < totalPreguntas) {
+                    setTimeout(cargarPregunta, 2000);
+                } else {
+                    finJuego();
+                }
+                
+            } catch (error) {
+                console.error("Error:", error);
+                resultadoElement.innerHTML = `
+                    <div class="incorrecto">
+                        Error al verificar respuesta. Intenta de nuevo.
+                    </div>
+                `;
+            }
+        }
+
+        // Mostrar resultado
+        function mostrarResultado(resultado) {
+            const esCorrecta = resultado.correcta;
+            
+            if (esCorrecta) {
+                puntaje++;
+                resultadoElement.innerHTML = `
+                    <div class="correcto">
+                        ✅ Respuesta Correcta
+                        <div class="explicacion">${resultado.explicacion}</div>
+                    </div>
+                `;
+            } else {
+                resultadoElement.innerHTML = `
+                    <div class="incorrecto">
+                        ❌ Respuesta Incorrecta
+                        <div class="explicacion">${resultado.explicacion}</div>
+                    </div>
+                `;
+            }
+            
+            actualizarPuntaje();
+        }
+
+        // Actualizar puntaje
+        function actualizarPuntaje() {
+            puntajeElement.textContent = `Puntaje: ${puntaje}/${preguntaActual + 1}`;
+        }
+
+        // Finalizar juego
+        function finJuego() {
+            const porcentaje = Math.round((puntaje / totalPreguntas) * 100);
+            let mensaje = "";
+            
+            if (porcentaje >= 80) {
+                mensaje = "🎖️ ¡Excelente! Dominas las finanzas avanzadas";
+            } else if (porcentaje >= 50) {
+                mensaje = "📚 Buen intento, sigue aprendiendo";
+            } else {
+                mensaje = "💡 Reviste los conceptos básicos";
+            }
+            
+            preguntaElement.textContent = "🏁 Juego Terminado";
+            opcionesElement.innerHTML = "";
+            resultadoElement.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>${mensaje}</h3>
+                    <p>Puntaje final: <strong>${puntaje}/${totalPreguntas}</strong> (${porcentaje}%)</p>
+                </div>
+            `;
+        }
+
+        // Iniciar el juego
+        window.onload = cargarPregunta;
+    </script>
+</body>
+</html>
